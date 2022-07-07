@@ -51,14 +51,14 @@ struct AST_NODE
     union
     {
         ast_atom_t atom;
-        ast_expr_t expr;        
+        ast_expr_t expr;
     };
 };
 
 #define AST_NODE_FLAG_ATOM 0ull
 #define AST_NODE_FLAG_EXPR 1ull
 
-extern __always_inline ast_node_t *ast_node_decode(ast_node_t *node) 
+extern __always_inline ast_node_t *ast_node_decode(ast_node_t *node)
 {
     return (ast_node_t *)((uintptr_t)node & ~1ul);
 }
