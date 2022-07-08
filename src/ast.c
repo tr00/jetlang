@@ -31,15 +31,28 @@ ast_node_t *ast_create_atom(enum AST_ATOM_HEAD head, const char *str, size_t len
         .len = len,
     };
 
-    return node;
+    return ast_node_encode(node, AST_NODE_FLAG_ATOM);
 }
 
-void ast_pretty_print(ast_node_t *ptr)
+ast_node_t *ast_create_expr(enum AST_EXPR_HEAD head)
+{
+    ast_node_t *node = _ast_alloc_node();
+
+    node->expr.head = head;
+
+    return ast_node_encode(node, AST_NODE_FLAG_EXPR);
+}
+
+static void _ast_pretty_print(ast_node_t *ptr, int depth)
 {
     static const char *atom2str[] = {
         [AST_ATOM_HEAD_NIL] = "nil",
         [AST_ATOM_HEAD_SYM] = "sym",
         [AST_ATOM_HEAD_INT] = "int",
+    };
+
+    static const char *expr2str[] = {
+        [AST_EXPR_HEAD_INVOKE] = "invoke",
     };
 
     ast_node_t *node;
@@ -48,12 +61,27 @@ void ast_pretty_print(ast_node_t *ptr)
     flag = ast_node_typeof(ptr);
     node = ast_node_decode(ptr);
 
+    for (int i = 0; i < depth; ++i)
+        printf("  ");
+
     if (flag == AST_NODE_FLAG_ATOM)
     {
         ast_atom_t *atom = &node->atom;
+
         printf("<atom:%s> %s", atom2str[atom->head], atom->body.str);
     }
     else
     {
+        ast_expr_t *expr = &node->expr;
+
+        printf("<expr:%s>", expr2str[expr->head]);
+
+        for (size_t i = 0; i < expr->body.len; ++i)
+            _ast_pretty_print(expr->body.vec[i], depth + 1);
     }
+}
+
+void ast_pretty_print(ast_node_t *ptr)
+{
+    _ast_pretty_print(ptr, 0);
 }

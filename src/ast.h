@@ -42,7 +42,7 @@ struct AST_EXPR
     {
         size_t len;
         size_t cap;
-        ast_node_t *vec;
+        ast_node_t **vec;
     } body;
 };
 

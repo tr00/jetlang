@@ -2,7 +2,9 @@
 
 ## TODO's:
 
-- add ast.h
-- add grammar.peg
-- add ast.c
-- ...
+- ~~add ast.h~~
+- finish the grammar
+- add utils in ast.c
+- lowering
+- type system
+- type inference
