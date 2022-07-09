@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
+#include <string.h> 
 #include "ast.h"
 
 extern inline ast_node_t *ast_node_encode(ast_node_t *, uintptr_t);
@@ -41,11 +40,31 @@ ast_node_t *ast_create_expr(enum AST_EXPR_HEAD head)
 
     node->expr.head = head;
 
+    node->expr.body.len = 0;
+    node->expr.body.cap = 4;
+    node->expr.body.vec = malloc(4 * sizeof(ast_node_t *));
+
     return ast_node_encode(node, AST_NODE_FLAG_EXPR);
+}
+
+static void _ast_expr_body_push(ast_expr_body_t *body, ast_node_t *item)
+{
+    if (body->len == body->cap)
+    {
+        body->cap *= 2;
+
+        body->vec = realloc(body->vec, body->cap * sizeof(ast_node_t *));
+    }
+
+    body->vec[body->len] = item;
+
+    ++body->len;
 }
 
 ast_node_t *ast_expr_push(ast_node_t *node, ast_node_t *item)
 {
+    _ast_expr_body_push(&ast_node_decode(node)->expr.body, item);
+
     return node;
 }
 
@@ -65,6 +84,9 @@ static void _ast_expr_body_reverse(ast_expr_body_t *body)
         tmp = vec[lo];
         vec[lo] = vec[hi];
         vec[hi] = tmp;
+
+        ++lo;
+        --hi;
     }
 }
 
@@ -100,20 +122,20 @@ static void _ast_pretty_print(ast_node_t *ptr, int depth)
     {
         ast_atom_t *atom = &node->atom;
 
-        printf("<atom:%s> %s", atom2str[atom->head], atom->body.str);
+        printf("<atom:%s> %s\n", atom2str[atom->head], atom->body.str);
     }
     else
     {
         ast_expr_t *expr = &node->expr;
 
-        printf("<expr:%s>", expr2str[expr->head]);
+        printf("<expr:%s>\n", expr2str[expr->head]);
 
         for (size_t i = 0; i < expr->body.len; ++i)
             _ast_pretty_print(expr->body.vec[i], depth + 1);
     }
 }
 
-void ast_pretty_print(ast_node_t *ptr)
+void ast_pretty_print(ast_node_t *node)
 {
-    _ast_pretty_print(ptr, 0);
+    _ast_pretty_print(node, 0);
 }

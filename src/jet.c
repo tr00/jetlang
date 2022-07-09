@@ -11,10 +11,7 @@ int main()
 
     int err = pcc_parse(ctx, &res);
 
-    if (err == 0)
-    {
-        ast_pretty_print(res);
-    }
+    ast_pretty_print(res);
 
     pcc_destroy(ctx);
 

@@ -1194,7 +1194,9 @@ static pcc_thunk_chunk_t *pcc_evaluate_rule_prog(pcc_context_t *ctx) {
     pcc_value_table__resize(ctx->auxil, &chunk->values, 1);
     pcc_capture_table__resize(ctx->auxil, &chunk->capts, 0);
     pcc_value_table__clear(ctx->auxil, &chunk->values);
+    if (!pcc_apply_rule(ctx, pcc_evaluate_rule___, &chunk->thunks, NULL)) goto L0000;
     if (!pcc_apply_rule(ctx, pcc_evaluate_rule_expr, &chunk->thunks, &(chunk->values.buf[0]))) goto L0000;
+    if (!pcc_apply_rule(ctx, pcc_evaluate_rule___, &chunk->thunks, NULL)) goto L0000;
     {
         pcc_thunk_t *const thunk = pcc_thunk__create_leaf(ctx->auxil, pcc_action_prog_0, 1, 0);
         thunk->data.leaf.values.buf[0] = &(chunk->values.buf[0]);
