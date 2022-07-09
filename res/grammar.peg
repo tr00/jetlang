@@ -5,10 +5,30 @@
 
 %value "ast_node_t *"
 
-atom <- sym _
+%source
+{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+}
 
-sym <- [a-zA-Z][a-zA-Z0-9_]* { $$ = ast_create_atom(); }
+prog <- e:expr { $$ = e; }
 
-_ <- [ \t]*
+exprs <- e:expr __ s:exprs { $$ = ast_expr_push(s, e); } 
+        / e:expr 
+        { 
+            $$ = ast_create_expr(AST_EXPR_HEAD_INVOKE); 
+            ast_expr_push($$, e);
+        }
+
+expr <- a:atom { $$ = a; } / '(' __ s:exprs __ ')' { $$ = ast_expr_reverse(s); }
+
+atom <- s:sym { $$ = s; }
+
+sym <- [a-zA-Z][a-zA-Z0-9_]* { $$ = ast_create_atom(AST_ATOM_HEAD_SYM, $0, $0e - $0s ); }
+
+__ <- [ \t\n]*
+# _ <- [ \t]*
 
 %%
+
+#pragma clang diagnostic pop

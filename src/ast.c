@@ -4,8 +4,9 @@
 
 #include "ast.h"
 
-extern ast_node_t *ast_node_decode(ast_node_t *);
-extern ast_node_t *ast_node_encode(ast_node_t *, uintptr_t);
+extern inline ast_node_t *ast_node_encode(ast_node_t *, uintptr_t);
+extern inline ast_node_t *ast_node_decode(ast_node_t *);
+extern inline uintptr_t ast_node_typeof(ast_node_t *);
 
 static ast_node_t *_ast_alloc_node()
 {
@@ -41,6 +42,37 @@ ast_node_t *ast_create_expr(enum AST_EXPR_HEAD head)
     node->expr.head = head;
 
     return ast_node_encode(node, AST_NODE_FLAG_EXPR);
+}
+
+ast_node_t *ast_expr_push(ast_node_t *node, ast_node_t *item)
+{
+    return node;
+}
+
+static void _ast_expr_body_reverse(ast_expr_body_t *body)
+{
+    size_t lo, hi;
+
+    ast_node_t **vec, *tmp;
+
+    lo = 0;
+    hi = body->len - 1;
+
+    vec = body->vec;
+
+    while (lo < hi)
+    {
+        tmp = vec[lo];
+        vec[lo] = vec[hi];
+        vec[hi] = tmp;
+    }
+}
+
+ast_node_t *ast_expr_reverse(ast_node_t *node)
+{
+    _ast_expr_body_reverse(&ast_node_decode(node)->expr.body);
+
+    return node;
 }
 
 static void _ast_pretty_print(ast_node_t *ptr, int depth)
