@@ -11,7 +11,7 @@
 #pragma clang diagnostic ignored "-Wunused-parameter"
 }
 
-prog <- e:expr { $$ = e; }
+prog <- __ e:expr __ { $$ = e; }
 
 exprs <- e:expr __ s:exprs { $$ = ast_expr_push(s, e); } 
         / e:expr 
