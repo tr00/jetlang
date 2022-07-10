@@ -1,36 +1,61 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
-typedef struct
+typedef unsigned char uchar;
+
+typedef struct NODE
 {
-    size_t len;
-    const char *str;
-} strn_t;
+    uintptr_t vec[256];
+} node_t;
 
 struct
 {
     size_t len;
-    size_t cap;
+    node_t root;
+} symbol_table;
 
-    struct 
-    {
-        const char *str;
-        size_t len;
-    } *keys;
-    uint32_t *vals;
-} smap;
-
-uint32_t lookup(strn_t key)
+uintptr_t get(const uchar *str)
 {
-    for (int i = 0; i < smap.len; ++i)
-    {
-        if (key.len != keys[i].len)
-            continue;
+    node_t *node = &symbol_table.root;
 
-        if (memcmp(key.str, keys[i].str, key.len)) 
-            return vals[i];
+FIND:
+
+    for (; *str; ++str)
+    {
+        uchar cc = *str;
+
+        if (!node->vec[cc])
+            goto PUSH;
+
+        node = (node_t *)node->vec[cc];
     }
+
+    goto DONE;
+
+PUSH:
+
+    for (; *str; ++str)
+    {
+        uchar cc = *str;
+
+        node->vec[cc] = (node_t *)calloc(1, sizeof(node_t));
+
+        node = (node_t *)node->vec[cc];
+    }
+
+    node->vec[0] = ++symbol_table.len;
+
+DONE:
+
+    return node->vec[0];
+}
+
+int main()
+{
+    printf("test: %lu\n", get("test"));
+    printf("test2: %lu\n", get("test2"));
+    printf("test: %lu\n", get("test"));
 
     return 0;
 }
-
