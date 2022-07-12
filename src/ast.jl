@@ -70,6 +70,13 @@ function instantiate(atom :: C_ast_atom_t)
     if atom.head == AST_ATOM_HEAD_NIL
         return jet_nil_t()
     elseif atom.head == AST_ATOM_HEAD_SYM
-        
+        return jet_sym_t(jet_sym_get(atom.body.str))
+    elseif atom.head == AST_ATOM_HEAD_INT
+        return jet_int_t(parse(Int, unsafe_string(atom.body.str)))
+    end
+end
+
+function instantiate(expr :: C_ast_expr_t)
+    if expr.head == AST_EXPR_HEAD_INVOKE
     end
 end
