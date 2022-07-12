@@ -15,7 +15,7 @@ struct
     node_t root;
 } symbol_table;
 
-uintptr_t get(const uchar *str)
+uintptr_t getsym(const uchar *str)
 {
     node_t *node = &symbol_table.root;
 
@@ -49,6 +49,11 @@ PUSH:
 DONE:
 
     return node->vec[0];
+}
+
+uintptr_t gensym()
+{
+    return ++symbol_table.len;
 }
 
 int main()
