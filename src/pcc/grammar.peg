@@ -1,0 +1,52 @@
+%header
+{
+#include "ast.h"
+
+ast_node_t *pcc_parse_all();
+
+}
+
+%value "ast_node_t *"
+
+%source
+{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+
+}
+
+prog <- __ e:expr __ { $$ = e; }
+
+exprs <- e:expr __ s:exprs { $$ = ast_expr_push(s, e); } 
+        / e:expr 
+        { 
+            $$ = ast_create_expr(AST_EXPR_HEAD_INVOKE); 
+            ast_expr_push($$, e);
+        }
+
+expr <- a:atom { $$ = a; } / '(' __ s:exprs __ ')' { $$ = ast_expr_reverse(s); }
+
+atom <- s:sym { $$ = s; }
+
+sym <- [a-zA-Z][a-zA-Z0-9_]* { $$ = ast_create_atom(AST_ATOM_HEAD_SYM, $0, $0e - $0s ); }
+
+__ <- [ \t\n]*
+# _ <- [ \t]*
+
+%%
+
+#pragma clang diagnostic pop
+
+ast_node_t *pcc_parse_all()
+{
+    pcc_context_t *ctx = pcc_create(NULL);
+
+    ast_node_t *res = NULL;
+
+    if(pcc_parse(ctx, &res) != 0)
+        pcc_error();
+    
+    pcc_destroy(ctx);
+
+    return res;
+}

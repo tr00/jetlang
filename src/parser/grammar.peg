@@ -1,6 +1,9 @@
 %header
 {
 #include "ast.h"
+
+ast_node_t *pcc_parse_all();
+
 }
 
 %value "ast_node_t *"
@@ -9,6 +12,7 @@
 {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
+
 }
 
 prog <- __ e:expr __ { $$ = e; }
@@ -32,3 +36,17 @@ __ <- [ \t\n]*
 %%
 
 #pragma clang diagnostic pop
+
+ast_node_t *pcc_parse_all()
+{
+    pcc_context_t *ctx = pcc_create(NULL);
+
+    ast_node_t *res = NULL;
+
+    if(pcc_parse(ctx, &res) != 0)
+        pcc_error();
+    
+    pcc_destroy(ctx);
+
+    return res;
+}
