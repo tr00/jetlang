@@ -10,3 +10,7 @@ function jet_get_sym(str :: Cstring)
         jet_sym_map.len[] += 1
     end
 end
+
+function jet_gen_sym()
+    jet_sym_map.len[] += 1
+end

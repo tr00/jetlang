@@ -8,6 +8,7 @@ SRC=$(call uniq, src/pcc.c $(wildcard src/*.c))
 OBJ=$(patsubst src/%.c, bin/%.o, $(SRC))
 
 $(info $(shell mkdir -p bin))
+$(info $(shell mkdir -p lib))
 
 all: $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) -o prog
@@ -15,8 +16,12 @@ all: $(OBJ)
 bin/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-src/pcc.c: res/grammar.peg
-	packcc -a -o pcc res/grammar.peg ; mv -t src/ pcc.*
+pcc:
+	packcc -a -o pcc src/pcc/grammar.peg
+	mv --update pcc.h pcc.c --target-directory=bin
+	$(CC) $(CFLAGS) -fPIC -c src/pcc/pcc.c -o bin/pcc.o
+	$(CC) $(CFLAGS) -fPIC -c src/pcc/ast.c -o bin/ast.o
+	$(CC) -fPIC -shared bin/ast.o bin/pcc.o -o lib/libpcc.so
 
 clean:
 	rm -rf bin/*

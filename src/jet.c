@@ -1,19 +1,13 @@
 #include <stdio.h>
 
-#include "pcc.h"
+#include "pcc/pcc.h"
 
 int main()
 {
 
-    pcc_context_t *ctx = pcc_create(NULL);
-
-    ast_node_t *res = NULL;
-
-    int err = pcc_parse(ctx, &res);
+    ast_node_t *res = pcc_parse_all();
 
     ast_pretty_print(res);
 
-    pcc_destroy(ctx);
-
-    return err;
+    return 0;
 }

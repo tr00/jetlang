@@ -1,11 +1,10 @@
 include("sym.jl")
 
-struct C_ast_node_ptr_t
-    ptr :: Culonglong
-end
+const AST_NODE_FLAG_ATOM = Csize_t(0)
+const AST_NODE_FLAG_EXPR = Csize_t(1)
 
-function Base.getproperty(node :: C_ast_node_ptr_t, sym :: Symbol)
-    getfield(node, sym)
+struct C_ast_node_t # C: ast_node_t *
+    ptr :: Culonglong
 end
 
 @enum C_ast_atom_head_t begin
@@ -31,7 +30,12 @@ end
 struct C_ast_expr_body_t
     len :: Csize_t
     cap :: Csize_t
-    vec :: Ptr{C_ast_node_ptr_t}
+    vec :: Ptr{C_ast_node_t}
+end
+
+struct C_ast_expr_t
+    head :: C_ast_expr_head_t
+    body :: C_ast_expr_body_t
 end
 
 ##
@@ -56,12 +60,14 @@ struct jet_scope_t <: jet_expr_t
     ret :: jet_node_t
 end
 
-struct jet_dcall_t <: jet_expr_t
+abstract type jet_fcall_t <: jet_expr_t end
+
+struct jet_dcall_t <: jet_fcall_t
     func :: jet_sym_t
     args :: Vector{jet_node_t}
 end
 
-struct jet_icall_t <: jet_expr_t
+struct jet_icall_t <: jet_fcall_t
     func :: jet_node_t
     args :: Vector{jet_node_t}
 end
@@ -78,5 +84,27 @@ end
 
 function instantiate(expr :: C_ast_expr_t)
     if expr.head == AST_EXPR_HEAD_INVOKE
+        func = instantiate(unsafe_load(expr.body.vec))
+        args = Vector{jet_node_t}(undef, expr.body.len - 1)
+
+        for x in 2:expr.body.len
+            ptr = unsafe_load(expr.body.vec, x)
+            push!(args, instantiate(ptr))
+        end
+
+        return jet_icall_t(func, args)
+    end
+end
+
+function instantiate(node :: C_ast_node_t)
+    flag = node.ptr & one(Csize_t)
+    uptr = node.ptr & ~one(Csize_t)
+
+    if flag == AST_NODE_FLAG_ATOM
+        atom = reinterpret(Ptr{C_ast_atom_t}, uptr)
+        instantiate(unsafe_load(atom))
+    elseif flag == AST_NODE_FLAG_EXPR
+        expr = reinterpret(Ptr{C_ast_expr_t}, uptr)
+        instantiate(unsafe_load(expr))
     end
 end
