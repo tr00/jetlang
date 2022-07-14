@@ -103,6 +103,13 @@ end
 
 function instantiate(expr :: C_ast_expr_t)
     if expr.head == AST_EXPR_HEAD_INVOKE
+        data = unsafe_wrap(Vector{C_ast_node_t}, expr.body.vec, expr.body.len, own = true)
+
+        data = map(instantiate, data)
+
+        func = first(data)
+        args = data[2:end]
+        #= 
         func = instantiate(unsafe_load(expr.body.vec))
         args = Vector{jet_node_t}()
 
@@ -112,6 +119,7 @@ function instantiate(expr :: C_ast_expr_t)
             ptr = unsafe_load(expr.body.vec, x)
             push!(args, instantiate(ptr))
         end
+        =#
 
         return jet_icall_t(func, args)
     end
