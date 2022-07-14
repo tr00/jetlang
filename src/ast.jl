@@ -1,3 +1,9 @@
+import Base: show
+
+using Libdl
+
+push!(DL_LOAD_PATH, "lib/")
+
 include("sym.jl")
 
 const AST_NODE_FLAG_ATOM = Csize_t(0)
@@ -72,11 +78,24 @@ struct jet_icall_t <: jet_fcall_t
     args :: Vector{jet_node_t}
 end
 
+function show(io :: IO, sym :: jet_sym_t)
+    print(io, "__$(sym.val)__")
+end
+
+function show(io :: IO, icall :: jet_icall_t)
+    println(io, "<expr:icall>")
+    println(io, icall.func)
+
+    for arg in icall.args
+        println(io, arg)
+    end
+end
+
 function instantiate(atom :: C_ast_atom_t)
     if atom.head == AST_ATOM_HEAD_NIL
         return jet_nil_t()
     elseif atom.head == AST_ATOM_HEAD_SYM
-        return jet_sym_t(jet_sym_get(atom.body.str))
+        return jet_sym_t(jet_get_sym(atom.body.str))
     elseif atom.head == AST_ATOM_HEAD_INT
         return jet_int_t(parse(Int, unsafe_string(atom.body.str)))
     end
@@ -85,7 +104,9 @@ end
 function instantiate(expr :: C_ast_expr_t)
     if expr.head == AST_EXPR_HEAD_INVOKE
         func = instantiate(unsafe_load(expr.body.vec))
-        args = Vector{jet_node_t}(undef, expr.body.len - 1)
+        args = Vector{jet_node_t}()
+
+        sizehint!(args, expr.body.len - 1)
 
         for x in 2:expr.body.len
             ptr = unsafe_load(expr.body.vec, x)
@@ -108,3 +129,10 @@ function instantiate(node :: C_ast_node_t)
         instantiate(unsafe_load(expr))
     end
 end
+
+##
+
+function ast_parse_all()
+    instantiate(@ccall :libpcc.pcc_parse_all()::C_ast_node_t)
+end
+

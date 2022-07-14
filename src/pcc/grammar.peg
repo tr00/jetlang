@@ -44,7 +44,10 @@ ast_node_t *pcc_parse_all()
     ast_node_t *res = NULL;
 
     if(pcc_parse(ctx, &res) != 0)
-        pcc_error();
+    {
+        fprintf(stderr, "error: end of input"\n);
+        exit(1);
+    }
     
     pcc_destroy(ctx);
 
