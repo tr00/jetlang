@@ -14,3 +14,10 @@ end
 function jet_gen_sym()
     jet_sym_map.len[] += 1
 end
+
+struct C_str_t <: AbstractString
+    len :: Csize_t
+    str :: Cstring
+end
+
+@inline length(str :: C_str_t) = str.len

@@ -1,66 +1,127 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <stdbool.h>
+
+#include "sym.h"
 
 typedef unsigned char uchar;
 
-typedef struct NODE
+#define JUDY_MASK 0x0full
+#define TYPEOF(jp) ((jp) & 0x0ful)
+#define DECODE(jp) ((jp) & ~0x0ful)
+
+enum
+{ JUDY_NULL_NODE = 0,
+    JUDY_LEAF_NODE,
+    JUDY_TRIE_NODE,
+    JUDY_MASK_NODE,
+};
+
+typedef uintptr_t JP; 
+
+typedef struct LEAF_NODE
+{
+
+} judy_leaf_t;
+
+typedef struct JUDY_TRIE_NODE
 {
     uintptr_t vec[256];
-} node_t;
+} judy_trie_node_t;
 
-struct
+typedef struct JUDY_MASK_NODE
 {
-    size_t len;
-    node_t root;
-} symbol_table;
-
-uintptr_t getsym(const uchar *str)
-{
-    node_t *node = &symbol_table.root;
-
-FIND:
-
-    for (; *str; ++str)
+    struct SUBEXP
     {
-        uchar cc = *str;
+        uint64_t mask;
+        struct 
+        { 
+            JP vec[32]; 
+        } *subarray[2];
+    } subexp[4];
+} judy_mask_node_t;
 
-        if (!node->vec[cc])
-            goto PUSH;
+struct {
+    JP root;
+} judy;
 
-        node = (node_t *)node->vec[cc];
+static sym_string_t *_alloc_string()
+{
+    return malloc(sizeof(sym_string_t));
+}
+
+static sym_string_t *_judy_find(const uchar *str, size_t len)
+{
+    JP jp = judy.root;
+
+    while (len > 0)
+    {
+        switch (TYPEOF(jp))
+        {
+            case JUDY_NULL_NODE:
+            case JUDY_LEAF_NODE:
+                return NULL;
+            case JUDY_TRIE_NODE:
+            {
+                judy_trie_node_t *node = (judy_trie_node_t *)DECODE(jp);
+                jp = node->vec[*str];
+
+                ++str;
+                --len;
+
+                break;
+            }
+            case JUDY_MASK_NODE:
+            {
+                uchar cc = *str;
+
+                judy_mask_node_t *node = (judy_mask_node_t *)DECODE(jp);
+
+                struct SUBEXP *subexp = &node->subexp[cc >> 5];
+
+                printf("%p\n", (void *)subexp);
+
+                break;
+            }
+        }
     }
 
-    goto DONE;
+    return TYPEOF(jp) == JUDY_LEAF_NODE ? DECODE(jp) : NULL;
+}
 
-PUSH:
+static sym_string_t *_judy_push(const uchar *str, size_t len)
+{
+    JP *jp = &judy.root;
 
-    for (; *str; ++str)
+    while (len > 0)
     {
-        uchar cc = *str;
+        switch (TYPEOF(*jp))
+        {
+            case JUDY_NULL_NODE:
+            {
+                *jp = _judy_suffix(str, len);
+                break;
+            }
+            case JUDY_LEAF_NODE:
+                return NULL;
+            case JUDY_TRIE_NODE:
+            {
+                judy_trie_node_t *node = (judy_trie_node_t *)DECODE(*jp);
+                jp = &node->vec[*str];
 
-        node->vec[cc] = (node_t *)calloc(1, sizeof(node_t));
+                ++str;
+                --len;
 
-        node = (node_t *)node->vec[cc];
+                break;
+            }
+        }
     }
 
-    node->vec[0] = ++symbol_table.len;
-
-DONE:
-
-    return node->vec[0];
+    return NULL;
 }
 
-uintptr_t gensym()
-{
-    return ++symbol_table.len;
-}
 
-int main()
-{
-    printf("test: %lu\n", get("test"));
-    printf("test2: %lu\n", get("test2"));
-    printf("test: %lu\n", get("test"));
 
-    return 0;
-}
+
+

@@ -1,9 +1,13 @@
 #ifndef __SYM_H_
 #define __SYM_H_
 
-#include <stdint.h>
+typedef struct
+{
+    size_t len;
+    const char *str;
+} sym_string_t; // 16B
 
-uintptr_t getsym();
-uintptr_t gensym();
+sym_string_t *getsym(const char *str, size_t len);
+sym_string_t *gensym();
 
 #endif
