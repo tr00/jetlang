@@ -55,6 +55,7 @@ struct jet_nil_t <: jet_atom_t end
 
 struct jet_sym_t <: jet_atom_t
     val :: UInt
+    str :: Cstring
 end
 
 struct jet_int_t <: jet_atom_t
@@ -140,7 +141,11 @@ end
 
 ##
 
-function ast_parse_all()
-    instantiate(@ccall :libpcc.pcc_parse_all()::C_ast_node_t)
+function parse_string(str :: String)
+    ptr = pointer(str)
+    len = length(str)
+    res = @ccall :libpcc.pcc_parse_string(str::Cstring, len::Csize_t)::C_ast_node_t
+
+    instantiate(res)
 end
 

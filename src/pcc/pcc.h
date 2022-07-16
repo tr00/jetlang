@@ -5,14 +5,20 @@
 
 #include "ast.h"
 
-ast_node_t *pcc_parse_all();
+typedef struct
+{
+    size_t len;
+    const char *str;
+} auxil_t;
+
+ast_node_t *pcc_parse_string(const char *str, size_t len);
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct pcc_context_tag pcc_context_t;
 
-pcc_context_t *pcc_create(void *auxil);
+pcc_context_t *pcc_create(auxil_t *auxil);
 int pcc_parse(pcc_context_t *ctx, ast_node_t **ret);
 void pcc_destroy(pcc_context_t *ctx);
 

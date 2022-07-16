@@ -25,6 +25,10 @@ static size_t pcc_strnlen(const char *str, size_t maxlen) {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
+
+static char pcc_auxil_getchar(auxil_t *);
+
+#define PCC_GETCHAR(auxil) pcc_auxil_getchar(auxil)
 #if !defined __has_attribute || defined _MSC_VER
 #define __attribute__(x)
 #endif
@@ -71,7 +75,7 @@ typedef struct pcc_range_tag {
 
 typedef ast_node_t *pcc_value_t;
 
-typedef void *pcc_auxil_t;
+typedef auxil_t *pcc_auxil_t;
 
 typedef struct pcc_value_table_tag {
     pcc_value_t *buf;
@@ -1445,7 +1449,7 @@ static pcc_thunk_chunk_t *pcc_evaluate_rule___(pcc_context_t *ctx) {
     return chunk;
 }
 
-pcc_context_t *pcc_create(void *auxil) {
+pcc_context_t *pcc_create(auxil_t *auxil) {
     return pcc_context__create(auxil);
 }
 
@@ -1466,16 +1470,37 @@ void pcc_destroy(pcc_context_t *ctx) {
 
 #pragma clang diagnostic pop
 
-ast_node_t *pcc_parse_all()
+ast_node_t *pcc_parse_string(const char *str, size_t len)
 {
-    pcc_context_t *ctx = pcc_create(NULL);
+    auxil_t *auxil = malloc(sizeof(pcc_auxil_t));
+
+    auxil->str = str;
+    auxil->len = len;
+
+    pcc_context_t *ctx = pcc_create(auxil);
 
     ast_node_t *res = NULL;
 
     if(pcc_parse(ctx, &res) != 0)
-        pcc_error();
-    
+    {
+        fprintf(stderr, "error: end of input\n");
+        exit(1);
+    }
+
     pcc_destroy(ctx);
 
     return res;
+}
+
+static char pcc_auxil_getchar(auxil_t *auxil)
+{
+    if (auxil->len <= 0)
+        return -1;
+
+    char cc = *auxil->str;
+
+    ++auxil->str;
+    --auxil->len;
+
+    return cc;
 }
