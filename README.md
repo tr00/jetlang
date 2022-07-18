@@ -3,12 +3,12 @@
 ## TODO's:
 
 - ~~add ast.h~~
-- finish the grammar
+- implement symbol table backend
 - add utils in ast.c
     - add allocator
-- implement test framework
+- ~~implement test framework~~
 - write tests for pcc
-- implement symbol table backend
+- finish the grammar
 - lowering
 - type system
 - type inference
