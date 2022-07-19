@@ -1,9 +1,15 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>
+
+#include <sys/mman.h>
 
 #include "sym.h"
 
@@ -13,6 +19,12 @@ typedef unsigned char uchar;
 #define TYPEOF(jp) ((jp) & 0x0ful)
 #define DECODE(jp) ((jp) & ~0x0ful)
 #define ENCODE(jp, flag) ((uintptr_t)(jp) & (uintptr_t)(flag))
+
+static void __attribute__((noinline, noreturn)) memcrash()
+{
+    fprintf(stderr, "error: memory corruption in the backend!\n");
+    exit(EXIT_FAILURE);
+}
 
 enum
 { 
@@ -161,201 +173,67 @@ static void _judy_push(const uchar *str, size_t len)
     return NULL;
 }
 
-// stack allocator for symbols
-
-struct SEG
-{
-    uintptr_t data;
-    struct SEG *next;
-} *root = NULL;
-
-static sym_string_t *_alloc_string()
-{
-    if (root == NULL || root->data - 4096 == (uintptr_t)root)
-    {
-        void *page = malloc(4096);
-
-        struct SEG *seg = (struct SEG *)page;
-
-        seg->data = (uintptr_t)seg + sizeof(struct SEG);
-        seg->next = root;
-
-        root = seg;
-    }
-
-    sym_string_t *sym = (sym_string_t *)seg->data;
-
-    seg->data += sizeof(sym_string_t);
-
-    return sym;
-}
-
-// buddy allocator for char arrays
-
-struct
-{
-    uintptr_t p[4];
-
-    bool t3 : 1;
-    bool t2 : 1;
-    bool t1 : 1;
-    bool t0 : 1;
-} state;
-
-static void _init_buddy_allocator()
-{
-    buddy_allocator.p[4] = calloc(1, 64);
-
-    buddy_allocator.p[3] = buddy_allocator.p[4];
-}
-
-#define p32 state.p[3]
-#define p16 state.p[2]
-#define p8 state.p[1]
-#define p4 state.p[0]
-
-#define t32 state.t3
-#define t32 state.t2
-#define t32 state.t1
-#define t32 state.t0
-
-
-
-static inline uintptr_t _move32()
-{
-    p32 = t32 ? calloc() : p32 + 32;
-
-    t32 = !t32;
-
-    return p32;
-}
-
-static inline uintptr_t _move16()
-{
-    p16 = t16 ? _move32() : p16 + 16;
-
-    t16 = !t16;
-
-    return p16;
-}
-
-static inline uintptr_t _move8()
-{
-    p8 = t8 ? p16 : p8 + 8;
-
-    t8 = !t8;
-
-    return p8;
-}
-
-static inline uintptr_t _move4()
-{
-    p4 = t4 ? p8 : p4 + 4;
-
-    t4 = !t4;
-
-    return p4;
-}
-
-static uintptr_t alloc(size_t n)
-{
-
-    switch (n)
-    {
-        case 32:
-        {
-            if (p4 == NULL)
-                p4 = calloc(1, 64);
-
-            uintptr_t res = p[4];
-
-            p[4] = t4 ? NULL : p[4] + 32;
-
-            return res;
-        }
-        case 16:
-        {
-            if (p[3] == p[4])
-            {
-                p[4] = t4 ? NULL : p[4] + 32;
-            }
-            
-            uintptr_t res = p[3];
-
-            p[3] = t3 ? p[4] : p[3] + 16;
-
-            return res;
-        }
-        case 8:
-        {
-            if (p[2] == p[3])
-            {
-                p[3] = t3 ? p[4] : p[3] + 16;
-            }
-            
-            uintptr_t res = p[2];
-
-            p[2] = t2 ? p[3] : p[2] + 8;
-
-            return res;
-        }
-        case 4:
-        {
-            if (p[1] == p[2])
-            {
-                p[2] = t2 ? p[3] : p[2] + 8;
-            }
-            
-            uintptr_t res = p[1];
-
-            p[1] = t1 ? p[2] : p[1] + 4;
-
-            return res;
-        }
-        case 2:
-        {
-            if (p[0] == p[1])
-            {
-                p[1] = t1 ? p[2] : p[1] + 4;
-            }
-            
-            uintptr_t res = p[0];
-
-            p[0] = t0 ? p[1] : p[0] + 2;
-
-            return res;
-        }
-    }
-
-    __builtin_unreachable();
-}
-
 typedef struct NODE
 {
-    size_t nbytes;
-    char *data;
+    size_t size;
     struct NODE *next;
-} *root, *curr;
+} *root;
 
-
-void *alloc(size_t size)
+static void *_alloc_page()
 {
-    struct NODE *node = curr;
+    int prot = PROT_READ | PROT_WRITE;
+    int flag = MAP_PRIVATE | MAP_ANONYMOUS;
 
-    while (node != NULL && node->nbytes < size)
-        node = node->next;
+    void *page = mmap(NULL, 4096, prot, flag, -1, 0);
 
-    void *res = node->data + (4096 - node->nbytes);
+    if (page == MAP_FAILED)
+        memcrash();
 
-    node->nbytes -= size;
+    return page;
+}
 
-    if (node->nbytes <= 32)
+static void _dealloc_page(void *page)
+{
+    if (munmap(page, 4096) == MAP_FAILED)
+        memcrash();
+}
+
+
+static void *_alloc(size_t size)
+{
+    struct NODE *node = root;
+
+    while (node->size < size)
     {
-        node->next = root;
+        if (node->next == NULL)
+        {
+            node->next = _alloc_page();
+            node->size = 4096 - sizeof(struct NODE);
 
-        root = node;
+            node = node->next;
+            break;
+        }
+            
+        node = node->next;
     }
+
+    void *res = (uintptr_t)node + (4096 - node->size);
+
+    node->size -= size;
 
     return res;
 }
 
+static symbol_t *_store_symbol(const char *str, size_t len)
+{
+    size_t size = (len & 0x03ul) + 4;
+
+    symbol_t *sym = _alloc(size);
+
+    sym->len = len;
+    
+    memcpy(sym->data, str, len);
+    memset(sym->data + len, 0, size - len);
+
+    return sym;
+}
