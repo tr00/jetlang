@@ -3,11 +3,11 @@
 
 typedef struct
 {
-    size_t len;
-    const char *str;
-} sym_string_t; // 16B
+    int len;
+    char data[];
+} symbol_t;
 
-sym_string_t *getsym(const char *str, size_t len);
-sym_string_t *gensym();
+symbol_t *getsym(const char *str, size_t len);
+symbol_t *gensym();
 
 #endif

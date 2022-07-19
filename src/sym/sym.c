@@ -192,38 +192,80 @@ static sym_string_t *_alloc_string()
 
 // buddy allocator for char arrays
 
-struct PAGE
+struct
 {
-    uchar *p[5];
-    unsigned t5 : 1;
-    unsigned t4 : 1;
-    unsigned t3 : 1;
-    unsigned t2 : 1;
-    unsigned t1 : 1;
-};
+    uintptr_t p[4];
 
-static uintptr_t alloc_two(struct PAGE *page)
+    bool t3 : 1;
+    bool t2 : 1;
+    bool t1 : 1;
+    bool t0 : 1;
+} state;
+
+static void _init_buddy_allocator()
 {
-    if (p[0] == p[1])
-        p[1] = t[1] ? p[2] : p[1] + 4;
+    buddy_allocator.p[4] = calloc(1, 64);
 
-    uintptr_t res = p[0];
+    buddy_allocator.p[3] = buddy_allocator.p[4];
+}
 
-    p[0] = t[0] ? p[1] : p[0] + 2;
+#define p32 state.p[3]
+#define p16 state.p[2]
+#define p8 state.p[1]
+#define p4 state.p[0]
 
-    return res;
+#define t32 state.t3
+#define t32 state.t2
+#define t32 state.t1
+#define t32 state.t0
+
+
+
+static inline uintptr_t _move32()
+{
+    p32 = t32 ? calloc() : p32 + 32;
+
+    t32 = !t32;
+
+    return p32;
+}
+
+static inline uintptr_t _move16()
+{
+    p16 = t16 ? _move32() : p16 + 16;
+
+    t16 = !t16;
+
+    return p16;
+}
+
+static inline uintptr_t _move8()
+{
+    p8 = t8 ? p16 : p8 + 8;
+
+    t8 = !t8;
+
+    return p8;
+}
+
+static inline uintptr_t _move4()
+{
+    p4 = t4 ? p8 : p4 + 4;
+
+    t4 = !t4;
+
+    return p4;
 }
 
 static uintptr_t alloc(size_t n)
 {
+
     switch (n)
     {
         case 32:
         {
-            if (p[4] == NULL)
-            {
-                p[4] = calloc(1, 64);
-            }
+            if (p4 == NULL)
+                p4 = calloc(1, 64);
 
             uintptr_t res = p[4];
 
@@ -287,3 +329,33 @@ static uintptr_t alloc(size_t n)
 
     __builtin_unreachable();
 }
+
+typedef struct NODE
+{
+    size_t nbytes;
+    char *data;
+    struct NODE *next;
+} *root, *curr;
+
+
+void *alloc(size_t size)
+{
+    struct NODE *node = curr;
+
+    while (node != NULL && node->nbytes < size)
+        node = node->next;
+
+    void *res = node->data + (4096 - node->nbytes);
+
+    node->nbytes -= size;
+
+    if (node->nbytes <= 32)
+    {
+        node->next = root;
+
+        root = node;
+    }
+
+    return res;
+}
+
