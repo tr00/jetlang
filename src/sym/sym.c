@@ -173,6 +173,20 @@ static void _judy_push(const uchar *str, size_t len)
     return NULL;
 }
 
+symbol_t *getsym(const char *str, size_t len)
+{
+    symbol_t *res;
+
+    res = _judy_find(str, len);
+
+    if (res != NULL)
+        return res;
+
+    res = _judy_push(str, len);
+
+    return res;
+}
+
 typedef struct NODE
 {
     size_t size;
