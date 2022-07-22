@@ -26,6 +26,73 @@ static void __attribute__((noinline, noreturn)) memcrash()
     exit(EXIT_FAILURE);
 }
 
+typedef struct NODE
+{
+    size_t size;
+    struct NODE *next;
+} *root;
+
+static void *_alloc_page()
+{
+    int prot = PROT_READ | PROT_WRITE;
+    int flag = MAP_PRIVATE | MAP_ANONYMOUS;
+
+    void *page = mmap(NULL, 4096, prot, flag, -1, 0);
+
+    if (page == MAP_FAILED)
+        memcrash();
+
+    return page;
+}
+
+static void _dealloc_page(void *page)
+{
+    if (munmap(page, 4096) == MAP_FAILED)
+        memcrash();
+}
+
+
+static void *_alloc(size_t size)
+{
+    struct NODE *node = root;
+
+    while (node->size < size)
+    {
+        if (node->next == NULL)
+        {
+            node->next = _alloc_page();
+            node->size = 4096 - sizeof(struct NODE);
+
+            node = node->next;
+            break;
+        }
+            
+        node = node->next;
+    }
+
+    void *res = (uintptr_t)node + (4096 - node->size);
+
+    node->size -= size;
+
+    return res;
+}
+
+static symbol_t *_make_sym(const char *str, size_t len)
+{
+    size_t size = (len & 0x03ul) + 4;
+
+    symbol_t *sym = _alloc(size);
+
+    sym->len = len;
+    
+    memcpy(sym->data, str, len);
+
+    // memory from mmap is zero initialized on GNU Linux
+    // memset(sym->data + len, 0, size - len);
+
+    return sym;
+}
+
 enum
 { 
     JUDY_NULL_NODE = 0,
@@ -78,27 +145,41 @@ struct {
 } judy;
 
 
-static sym_string_t *_judy_find(const uchar *str, size_t len)
+static sym_string_t *_judy_find(const uchar *str)
 {
     JP jp = judy.root;
 
-    while (len > 0)
+    while (true)
     {
         switch (TYPEOF(jp))
         {
-            case JUDY_NULL_NODE: case JUDY_LEAF_NODE:
+            case JUDY_NULL_NODE: 
                 return NULL;
+            case JUDY_LEAF_NODE:
+                return *str == '\0' ? DECODE(jp) : NULL;
             case JUDY_TRIE_NODE:
             {
                 judy_trie_node_t *node = (judy_trie_node_t *)DECODE(jp);
-                jp = node->vec[*str];
 
-                ++str;
-                --len;
+                jp = node->vec[*str++];
 
                 break;
             }
-            case JUDY_MASK_NODE:
+            case JUDY_EDGE_NODE:
+            {
+                judy_edge_node_t *node = (judy_edge_node_t *)DECODE(jp);
+
+                if (strlen(str) < node->len)
+                    return NULL;
+
+                if (memcmp(node->buf, str, node->len) != 0)
+                    return NULL;
+
+                jp = node->next;
+
+                break;
+            }
+            case JUDY_MASK_NODE: /* unused */
             {
                 uchar cc = *str;
 
@@ -110,7 +191,7 @@ static sym_string_t *_judy_find(const uchar *str, size_t len)
 
                 break;
             }
-            case JUDY_HALF_NODE:
+            case JUDY_HALF_NODE: /* unused */
             {
                 judy_half_node_t *node = (judy_half_node_t *)DECODE(jp);
 
@@ -130,10 +211,10 @@ static sym_string_t *_judy_find(const uchar *str, size_t len)
         }
     }
 
-    return TYPEOF(jp) == JUDY_LEAF_NODE ? (sym_string_t *)DECODE(jp) : NULL;
+    return NULL; // unreachable?
 }
 
-static void _judy_push(const uchar *str, size_t len)
+static void _judy_push(const uchar *str, size_t len, void *res)
 {
     JP *jp = &judy.root;
 
@@ -175,79 +256,25 @@ static void _judy_push(const uchar *str, size_t len)
 
 symbol_t *getsym(const char *str, size_t len)
 {
-    symbol_t *res;
+    symbol_t *sym;
 
-    res = _judy_find(str, len);
+    sym = _judy_find(str, len);
 
-    if (res != NULL)
-        return res;
+    if (sym != NULL)
+        return sym;
 
-    res = _judy_push(str, len);
+    sym = _make_sym(str, len);
 
-    return res;
-}
-
-typedef struct NODE
-{
-    size_t size;
-    struct NODE *next;
-} *root;
-
-static void *_alloc_page()
-{
-    int prot = PROT_READ | PROT_WRITE;
-    int flag = MAP_PRIVATE | MAP_ANONYMOUS;
-
-    void *page = mmap(NULL, 4096, prot, flag, -1, 0);
-
-    if (page == MAP_FAILED)
-        memcrash();
-
-    return page;
-}
-
-static void _dealloc_page(void *page)
-{
-    if (munmap(page, 4096) == MAP_FAILED)
-        memcrash();
-}
-
-
-static void *_alloc(size_t size)
-{
-    struct NODE *node = root;
-
-    while (node->size < size)
-    {
-        if (node->next == NULL)
-        {
-            node->next = _alloc_page();
-            node->size = 4096 - sizeof(struct NODE);
-
-            node = node->next;
-            break;
-        }
-            
-        node = node->next;
-    }
-
-    void *res = (uintptr_t)node + (4096 - node->size);
-
-    node->size -= size;
-
-    return res;
-}
-
-static symbol_t *_store_symbol(const char *str, size_t len)
-{
-    size_t size = (len & 0x03ul) + 4;
-
-    symbol_t *sym = _alloc(size);
-
-    sym->len = len;
-    
-    memcpy(sym->data, str, len);
-    memset(sym->data + len, 0, size - len);
+    _judy_push(str, len, sym);
 
     return sym;
 }
+
+
+#ifdef TEST_SYM
+int main()
+{
+
+    return 0;
+}
+#endif
