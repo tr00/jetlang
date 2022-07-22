@@ -1,5 +1,7 @@
 module AST
 
+import Base: show
+
 export jet_node_t, jet_atom_t, jet_expr_t
 
 export jet_nil_t, jet_sym_t, jet_int_t
@@ -28,12 +30,53 @@ end
 
 ## expr types
 
-struct jet_call_t <: jet_expr_t end
+struct jet_call_t <: jet_expr_t
+    args :: Vector{jet_node_t}
+end
 
 ## constructors
 
 jet_sym_t(str :: String) = jet_sym_t(Csymbol(str))
 jet_sym_t(str :: Cstring, len :: Csize_t) = jet_sym_t(Csymbol(str, len))
 
+## pretty printing
+
+show(io :: IO, ::jet_nil_t) = print(io, "()")
+
+show(io :: IO, sym :: jet_sym_t) = print(io, string(sym))
+
+show(io :: IO, int :: jet_int_t) = print(io, int.val)
+
+function tostring(io :: IO, nil :: jet_nil_t, cd = 0, md = 8)
+    if cd < md
+        print(io, ' '^cd, "<atom:nil>")
+    end
+end
+
+function tostring(io :: IO, int :: jet_int_t, cd = 0, md = 8)
+    if cd < md
+        print(io, ' '^cd, "<atom:int> $(int.val)")
+    end
+end
+
+function tostring(io :: IO, sym :: jet_sym_t, cd = 0, md = 8)
+    if cd < md
+        print(io, ' '^cd, "<atom:sym> $(string(sym))")
+    end
+end
+
+function tostring(io :: IO, call :: jet_call_t, cd = 0, md = 8)
+    if cd < md
+        print(io, ' '^cd, "<expr:call>")
+
+        if cd + 1 < md
+            println(io)
+
+            for x in call.args
+                println(io, tostring(io, x, cd + 1, md))
+            end
+        end
+    end
+end
 
 end
