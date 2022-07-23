@@ -145,11 +145,11 @@ struct {
 } judy;
 
 
-static sym_string_t *_judy_find(const uchar *str)
+static sym_string_t *_judy_find(const uchar *str, size_t len)
 {
     JP jp = judy.root;
 
-    while (true)
+    while (len >= 0)
     {
         switch (TYPEOF(jp))
         {
@@ -161,7 +161,10 @@ static sym_string_t *_judy_find(const uchar *str)
             {
                 judy_trie_node_t *node = (judy_trie_node_t *)DECODE(jp);
 
-                jp = node->vec[*str++];
+                jp = node->vec[*str];
+
+                ++str;
+                --len;
 
                 break;
             }
@@ -169,13 +172,16 @@ static sym_string_t *_judy_find(const uchar *str)
             {
                 judy_edge_node_t *node = (judy_edge_node_t *)DECODE(jp);
 
-                if (strlen(str) < node->len)
+                if (len < node->len)
                     return NULL;
 
                 if (memcmp(node->buf, str, node->len) != 0)
                     return NULL;
 
                 jp = node->next;
+
+                str += node->len;
+                len -= node->len;
 
                 break;
             }
@@ -237,7 +243,9 @@ static void _judy_push(const uchar *str, size_t len, void *res)
                 break;
             }
             case JUDY_LEAF_NODE:
-                return NULL;
+            {
+                return DECODE(*jp);
+            }
             case JUDY_TRIE_NODE:
             {
                 judy_trie_node_t *node = (judy_trie_node_t *)DECODE(*jp);
