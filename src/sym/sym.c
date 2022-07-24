@@ -26,11 +26,19 @@ static void __attribute__((noinline, noreturn)) memcrash()
     exit(EXIT_FAILURE);
 }
 
-typedef struct NODE
+struct NODE
 {
     size_t size;
     struct NODE *next;
 } *root;
+
+void init_allocators()
+{
+    root = _alloc_page();
+
+    root->size = 0;
+    root->next = NULL;
+}
 
 static void *_alloc_page()
 {
@@ -145,7 +153,7 @@ struct {
 } judy;
 
 
-static sym_string_t *_judy_find(const uchar *str, size_t len)
+static symbol_t *_judy_find(const uchar *str, size_t len)
 {
     JP jp = judy.root;
 
