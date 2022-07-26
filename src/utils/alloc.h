@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <sys/mman.h>
 
@@ -38,6 +39,19 @@ static void *jet_alloc_z(size_t size)
     return ptr;
 }
 
+static *void jet_realloc_a(void *ptr, size_t size)
+{
+    void *ptr = realloc(ptr, size);
+
+    if (ptr == NULL)
+    {
+        fprintf(stderr, "error: out of memory!\n");
+        exit(1);
+    }
+
+    return ptr;
+}
+
 static void *jet_alloc_p()
 {
     int prot = PROT_READ | PROT_WRITE;
@@ -54,12 +68,7 @@ static void *jet_alloc_p()
     return page;
 }
 
-static void jet_dealloc_u(void *ptr)
-{
-    free(ptr);
-}
-
-static void jet_dealloc_z(void *ptr)
+static void jet_dealloc_a(void *ptr)
 {
     free(ptr);
 }
