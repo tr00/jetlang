@@ -8,6 +8,7 @@
     - add allocator
 - ~~implement test framework~~
 - write tests for pcc
+- add vectorized atoi implementation
 - finish the grammar
 - lowering
 - type system
