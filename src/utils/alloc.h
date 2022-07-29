@@ -13,6 +13,9 @@
 
 #include <sys/mman.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+
 static void *jet_alloc_u(size_t size)
 {
     void *ptr = malloc(size);
@@ -39,9 +42,9 @@ static void *jet_alloc_z(size_t size)
     return ptr;
 }
 
-static *void jet_realloc_a(void *ptr, size_t size)
+static void *jet_realloc_a(void *ptr, size_t size)
 {
-    void *ptr = realloc(ptr, size);
+    ptr = realloc(ptr, size);
 
     if (ptr == NULL)
     {
@@ -81,5 +84,7 @@ static void jet_dealloc_p(void *ptr)
         exit(1);
     }
 }
+
+#pragma clang diagnostic pop
 
 #endif

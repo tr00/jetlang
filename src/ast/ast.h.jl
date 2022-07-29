@@ -1,5 +1,7 @@
 module AST
 
+include("../sym/sym.h.jl")
+
 import Base: show
 
 export jet_node_t, jet_atom_t, jet_expr_t
@@ -73,7 +75,7 @@ function tostring(io :: IO, call :: jet_call_t, cd = 0, md = 8)
             println(io)
 
             for x in call.args
-                println(io, tostring(io, x, cd + 1, md))
+                tostring(io, x, cd + 1, md)
             end
         end
     end
