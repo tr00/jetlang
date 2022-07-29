@@ -45,7 +45,7 @@ jet_sym_t(str :: Cstring, len :: Csize_t) = jet_sym_t(Csymbol(str, len))
 
 show(io :: IO, ::jet_nil_t) = print(io, "()")
 
-show(io :: IO, sym :: jet_sym_t) = print(io, string(sym))
+show(io :: IO, sym :: jet_sym_t) = print(io, string(sym.sym))
 
 show(io :: IO, int :: jet_int_t) = print(io, int.val)
 
