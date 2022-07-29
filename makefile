@@ -23,6 +23,10 @@ pcc:
 	$(CC) $(CFLAGS) -fPIC -c src/pcc/ast.c -o bin/ast.o
 	$(CC) -fPIC -shared bin/ast.o bin/pcc.o -o lib/libpcc.so
 
+sym:
+	$(CC) $(CFLAGS) -fPIC -c src/sym/sym2.c -o bin/sym.o
+	$(CC) -fPIC -shared bin/sym.o -o lib/libsym.so
+
 clean:
 	rm -rf bin/*
 	rm -rf lib/*

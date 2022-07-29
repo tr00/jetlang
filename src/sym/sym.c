@@ -16,7 +16,7 @@
 typedef unsigned char uchar;
 
 #define JUDY_MASK 0x0full
-#define TYPEOF(jp) ((jp) & 0x0ful)
+#define TYPEOF(jp) ((jp)&0x0ful)
 #define DECODE(jp) ((jp) & ~0x0ful)
 #define ENCODE(jp, flag) ((uintptr_t)(jp) & (uintptr_t)(flag))
 
@@ -30,7 +30,7 @@ struct NODE
 {
     size_t size;
     struct NODE *next;
-} *root;
+} * root;
 
 void init_allocators()
 {
@@ -59,7 +59,6 @@ static void _dealloc_page(void *page)
         memcrash();
 }
 
-
 static void *_alloc(size_t size)
 {
     struct NODE *node = root;
@@ -74,7 +73,7 @@ static void *_alloc(size_t size)
             node = node->next;
             break;
         }
-            
+
         node = node->next;
     }
 
@@ -92,7 +91,7 @@ static symbol_t *_make_sym(const char *str, size_t len)
     symbol_t *sym = _alloc(size);
 
     sym->len = len;
-    
+
     memcpy(sym->data, str, len);
 
     // memory from mmap is zero initialized on GNU Linux
@@ -102,7 +101,7 @@ static symbol_t *_make_sym(const char *str, size_t len)
 }
 
 enum
-{ 
+{
     JUDY_NULL_NODE = 0,
     JUDY_LEAF_NODE,
     JUDY_TRIE_NODE,
@@ -111,7 +110,7 @@ enum
     JUDY_HALF_NODE,
 };
 
-typedef uintptr_t JP; 
+typedef uintptr_t JP;
 
 typedef struct LEAF_NODE
 {
@@ -128,10 +127,10 @@ typedef struct JUDY_MASK_NODE
     struct SUBEXP
     {
         uint64_t mask;
-        struct 
-        { 
-            JP vec[32]; 
-        } *subarray[2];
+        struct
+        {
+            JP vec[32];
+        } * subarray[2];
     } subexp[4];
 } judy_mask_node_t;
 
@@ -148,10 +147,10 @@ typedef struct JUDY_EDGE_NODE
     JP *next;
 } judy_edge_node_t;
 
-struct {
+struct
+{
     JP root;
 } judy;
-
 
 static symbol_t *_judy_find(const uchar *str, size_t len)
 {
@@ -161,67 +160,65 @@ static symbol_t *_judy_find(const uchar *str, size_t len)
     {
         switch (TYPEOF(jp))
         {
-            case JUDY_NULL_NODE: 
+        case JUDY_NULL_NODE:
+            return NULL;
+        case JUDY_LEAF_NODE:
+            return *str == '\0' ? DECODE(jp) : NULL;
+        case JUDY_TRIE_NODE:
+        {
+            judy_trie_node_t *node = (judy_trie_node_t *)DECODE(jp);
+
+            jp = node->vec[*str];
+
+            ++str;
+            --len;
+
+            break;
+        }
+        case JUDY_EDGE_NODE:
+        {
+            judy_edge_node_t *node = (judy_edge_node_t *)DECODE(jp);
+
+            if (len < node->len)
                 return NULL;
-            case JUDY_LEAF_NODE:
-                return *str == '\0' ? DECODE(jp) : NULL;
-            case JUDY_TRIE_NODE:
-            {
-                judy_trie_node_t *node = (judy_trie_node_t *)DECODE(jp);
 
-                jp = node->vec[*str];
+            if (memcmp(node->buf, str, node->len) != 0)
+                return NULL;
 
-                ++str;
-                --len;
+            jp = node->next;
 
-                break;
-            }
-            case JUDY_EDGE_NODE:
-            {
-                judy_edge_node_t *node = (judy_edge_node_t *)DECODE(jp);
+            str += node->len;
+            len -= node->len;
 
-                if (len < node->len)
-                    return NULL;
+            break;
+        }
+        case JUDY_MASK_NODE: /* unused */
+        {
+            uchar cc = *str;
 
-                if (memcmp(node->buf, str, node->len) != 0)
-                    return NULL;
+            judy_mask_node_t *node = (judy_mask_node_t *)DECODE(jp);
 
-                jp = node->next;
+            struct SUBEXP *subexp = &node->subexp[cc >> 5];
 
-                str += node->len;
-                len -= node->len;
+            printf("%p\n", (void *)subexp);
 
-                break;
-            }
-            case JUDY_MASK_NODE: /* unused */
-            {
-                uchar cc = *str;
+            break;
+        }
+        case JUDY_HALF_NODE: /* unused */
+        {
+            judy_half_node_t *node = (judy_half_node_t *)DECODE(jp);
 
-                judy_mask_node_t *node = (judy_mask_node_t *)DECODE(jp);
+            uint64_t key = node->keys & 0xffffffffffffff00ul;
 
-                struct SUBEXP *subexp = &node->subexp[cc >> 5];
+            uint64_t cmp = key & *str;
 
-                printf("%p\n", (void *)subexp);
+            if (cmp == 0)
+                return NULL;
 
-                break;
-            }
-            case JUDY_HALF_NODE: /* unused */
-            {
-                judy_half_node_t *node = (judy_half_node_t *)DECODE(jp);
+            __builtin_clzl(cmp);
 
-
-                uint64_t key = node->keys & 0xffffffffffffff00ul;
-
-                uint64_t cmp = key & *str;
-
-                if (cmp == 0)
-                    return NULL;
-
-                __builtin_clzl(cmp);
-
-
-                break;
-            }
+            break;
+        }
         }
     }
 
@@ -236,34 +233,34 @@ static void _judy_push(const uchar *str, size_t len, void *res)
     {
         switch (TYPEOF(*jp))
         {
-            case JUDY_NULL_NODE:
-            {
-                judy_edge_node_t *node = malloc(sizeof(judy_edge_node_t));
+        case JUDY_NULL_NODE:
+        {
+            judy_edge_node_t *node = malloc(sizeof(judy_edge_node_t));
 
-                node->len = len <= 32 ? len : 32;
+            node->len = len <= 32 ? len : 32;
 
-                memcpy(node->buf, str, node->len);
+            memcpy(node->buf, str, node->len);
 
-                *jp = ENCODE(node, JUDY_EDGE_NODE);
+            *jp = ENCODE(node, JUDY_EDGE_NODE);
 
-                jp = &node->next;
+            jp = &node->next;
 
-                break;
-            }
-            case JUDY_LEAF_NODE:
-            {
-                return DECODE(*jp);
-            }
-            case JUDY_TRIE_NODE:
-            {
-                judy_trie_node_t *node = (judy_trie_node_t *)DECODE(*jp);
-                jp = &node->vec[*str];
+            break;
+        }
+        case JUDY_LEAF_NODE:
+        {
+            return DECODE(*jp);
+        }
+        case JUDY_TRIE_NODE:
+        {
+            judy_trie_node_t *node = (judy_trie_node_t *)DECODE(*jp);
+            jp = &node->vec[*str];
 
-                ++str;
-                --len;
+            ++str;
+            --len;
 
-                break;
-            }
+            break;
+        }
         }
     }
 
@@ -285,7 +282,6 @@ symbol_t *getsym(const char *str, size_t len)
 
     return sym;
 }
-
 
 #ifdef TEST_SYM
 int main()

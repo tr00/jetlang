@@ -1,4 +1,4 @@
-import Base: ncodeunits, length, codeunit, getindex, checkbounds, iterate, string
+import Base: ncodeunits, length, codeunit, getindex, iterate, string, show
 
 using Libdl
 
@@ -14,7 +14,7 @@ typedef struct
 struct Csymbol <: AbstractString
     ptr :: Ptr{Cvoid}
 
-    Csymbol(str :: Cstring, len :: Csize_t = @ccall strlen(str::Cstring)::Csize_t) = cgetsym(str, len)
+    Csymbol(str :: Cstring, len :: Cint) = cgetsym(str, len)
 end
 
 function Csymbol(str :: String)
@@ -23,7 +23,7 @@ function Csymbol(str :: String)
 
     @assert unsafe_load(ptr, len + 1) == 0x00
 
-    return Csymbol(Cstring(ptr), len)
+    return Csymbol(Cstring(ptr), Cint(len))
 end
 
 """
@@ -36,11 +36,11 @@ end
 """
 symbol_t *getsym(const char *str, size_t len);
 """
-@inline function cgetsym(str :: Cstring, len :: Csize_t) 
-    @ccall :libsym.getsym(str::Cstring, len::Csize_t)::Csymbol
+@inline function cgetsym(str :: Cstring, len :: Cint) 
+    @ccall :libsym.getsym(str::Cstring, len::Cint)::Csymbol
 end
 
-@inline function Base.ncodeunits(sym :: Csymbol) 
+@inline function Base.ncodeunits(sym :: Csymbol)
     ptr = Ptr{Cint}(sym.ptr)
     len = unsafe_load(ptr)
 
@@ -73,10 +73,15 @@ end
 end
 
 function Base.string(sym :: Csymbol)
-    ptr = sym.ptr + Core.sizeof(Cint)
-    len = unsafe_load(Ptr{Cint}(sym.ptr))
+    ptr = Ptr{UInt8}(sym.ptr + Core.sizeof(Cint))
+    len = length(sym)
     str = unsafe_string(ptr, len)
 
     return str
 end
 
+function Base.show(io :: IO, sym :: Csymbol)
+    print(io, string(sym))
+end
+
+@ccall :libsym.judy_init()::Cvoid
