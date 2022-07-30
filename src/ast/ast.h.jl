@@ -80,7 +80,9 @@ function tostring(io :: IO, call :: jet_call_t, cd = 0, md = 8)
 
             for x in call.args
                 tostring(io, x, cd + 1, md)
-                println(io)
+                if x != last(call.args)
+                    println(io)
+                end
             end
         end
     end
