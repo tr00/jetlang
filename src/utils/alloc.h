@@ -13,6 +13,14 @@
 
 #include <sys/mman.h>
 
+
+#if 1
+#define callback(n) printf("alloc: %d bytes", n);
+#else
+#define callback(n) 0
+#endif
+
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 
@@ -25,6 +33,8 @@ static void *jet_alloc_u(size_t size)
         fprintf(stderr, "error: out of memory!\n");
         exit(1);
     }
+
+    callback(size);
 
     return ptr;
 }
@@ -39,6 +49,8 @@ static void *jet_alloc_z(size_t size)
         exit(1);
     }
 
+    callback(size);
+
     return ptr;
 }
 
@@ -51,6 +63,8 @@ static void *jet_realloc_a(void *ptr, size_t size)
         fprintf(stderr, "error: out of memory!\n");
         exit(1);
     }
+
+    callback(size);
 
     return ptr;
 }
@@ -67,6 +81,8 @@ static void *jet_alloc_p()
         fprintf(stderr, "error: out of memory!\n");
         exit(1);
     }
+
+    callback(4096);
 
     return page;
 }

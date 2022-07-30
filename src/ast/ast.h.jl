@@ -39,7 +39,9 @@ end
 ## constructors
 
 jet_sym_t(str :: String) = jet_sym_t(Csymbol(str))
-jet_sym_t(str :: Cstring, len :: Csize_t) = jet_sym_t(Csymbol(str, len))
+jet_sym_t(str :: Cstring, len :: Cint) = jet_sym_t(Csymbol(str, len))
+
+jet_call_t(nodes :: jet_node_t ...) = jet_call_t(jet_node_t[nodes...])
 
 ## pretty printing
 
@@ -48,6 +50,8 @@ show(io :: IO, ::jet_nil_t) = print(io, "()")
 show(io :: IO, sym :: jet_sym_t) = print(io, string(sym.sym))
 
 show(io :: IO, int :: jet_int_t) = print(io, int.val)
+
+show(io :: IO, call :: jet_call_t) = tostring(io, call)
 
 function tostring(io :: IO, nil :: jet_nil_t, cd = 0, md = 8)
     if cd < md
@@ -76,6 +80,7 @@ function tostring(io :: IO, call :: jet_call_t, cd = 0, md = 8)
 
             for x in call.args
                 tostring(io, x, cd + 1, md)
+                println(io)
             end
         end
     end
