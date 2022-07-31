@@ -19,6 +19,7 @@ struct CST
 
     struct SVEC ints;
     struct SVEC syms;
+    struct SVEC strs;
 };
 
 enum
@@ -26,7 +27,7 @@ enum
     CST_TAG_NIL,
     CST_TAG_INT,
     CST_TAG_SYM,
-    CST_TAG_STRING,
+    CST_TAG_STR,
     CST_TAG_CALL,
 };
 
@@ -37,7 +38,7 @@ typedef struct
     int idx : 0x20;
     int tag : 0x1f;
     int ___ : 0x01;
-} cst_atom_t;
+} cst_atom_t; // 64b / 8B
 
 typedef struct
 {

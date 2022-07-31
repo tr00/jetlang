@@ -1,0 +1,33 @@
+%header
+{
+#include "../cst/cst.h"
+}
+
+%value "cst_node_t *"
+
+prog    <- e:expr { $$ = e; }
+
+list    <- e:expr __ s:list / e:expr
+
+expr    <- a:atom { $$ = a; }
+
+atom    <- ( a:nil / a:int / a:sym / a:str ) { $$ = a; }
+
+
+call    <- '(' l:list ')' { $$ = cst_flip_node(l); }
+
+
+nil     <- ( "()" / "nil" )             { $$ = cst_make_atom(auxil, CST_TAG_NIL, $0s, $0e); }
+
+int     <- "0"                          { $$ = cst_make_atom(auxil, CST_TAG_INT, $0s, $0e); }
+
+sym     <- [a-zA-Z_][a-zA-Z0-9_]+       { $$ = cst_make_atom(auxil, CST_TAG_SYM, $0s, $0e); }
+
+str     <- '\"' ( "\\\"" [^"] )* '\"'   { $$ = cst_make_atom(auxil, CST_TAG_SYM, $0s, $0e); }
+
+
+# _   <- [ \t]*
+# __  <- [ \t\n]*
+
+%%
+

@@ -18,8 +18,7 @@ static int _cst_push_atom(struct SVEC *vec, int s, int e)
 
     vec->data[idx].s = s;
     vec->data[idx].e = e;
-
-    ++vec->len;
+++vec->len;
 
     return idx;
 }
@@ -38,6 +37,9 @@ cst_node_t cst_make_atom(struct CST *cst, int tag, int s, int e)
         break;
     case CST_TAG_SYM:
         atom.idx = _cst_push_atom(&cst->syms, s, e);
+        break;
+    case CST_TAG_STR:
+        atom.idx = _cst_push_atom(&cst->strs, s, e);
         break;
     }
 
