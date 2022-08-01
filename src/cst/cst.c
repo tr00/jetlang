@@ -2,6 +2,12 @@
 
 #include "cst.h"
 
+typedef struct EDGELIST
+{
+    size_t len;
+    cst_atom_t vec[];
+} _cst_edgelist_t;
+
 #define DECODE(ptr) ((uintptr_t)(ptr) & ~1ul)
 #define ENCODE(ptr, tag) ((uintptr_t)(ptr) | (uintptr_t)(tag))
 
@@ -18,7 +24,8 @@ static int _cst_push_atom(struct SVEC *vec, int s, int e)
 
     vec->data[idx].s = s;
     vec->data[idx].e = e;
-++vec->len;
+
+    ++vec->len;
 
     return idx;
 }
@@ -52,6 +59,8 @@ cst_node_t cst_make_atom(struct CST *cst, int tag, int s, int e)
 cst_node_t cst_make_expr(struct CST *cst)
 {
     cst_expr_t *expr = (cst_expr_t *)jet_alloc_u(64);
+
+    expr->len = 0;
 
     return (cst_node_t)ENCODE(expr, 1);
 }
