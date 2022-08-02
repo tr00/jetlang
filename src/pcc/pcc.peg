@@ -1,51 +1,85 @@
 %header
 {
-#include "../cst/cst.h"
+#include "ast.h"
+
+typedef struct
+{
+    size_t len;
+    const char *str;
+} auxil_t;
+
+ast_node_t *pcc_parse_string(const char *str, size_t len);
+
 }
 
-%value "cst_node_t"
+%value "ast_node_t *"
 
-%auxil "struct CST *"
+%auxil "auxil_t *"
 
-prog    <- e:expr                               { $$ = auxil->root = e; }
+%source
+{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 
-stmt    <- b:bind                               { $$ = s; }
-         / e:expr                               { $$ = e; }
+static char pcc_auxil_getchar(auxil_t *);
 
-expr    <- a:atom                               { $$ = a; } 
-         / c:call                               { $$ = c; }
+#define PCC_GETCHAR(auxil) pcc_auxil_getchar(auxil)
 
-atom    <- ( a:nil / a:int / a:sym / a:str )    { $$ = a; }
+}
 
+prog <- __ e:expr __ { $$ = e; }
 
-bind    <- s:sym _ '=' _ e:expr                 { 
-                                                    $$ = cst_make_node(auxil, CST_TAG_BIND, $0s, $0e); 
-                                                    $$ = cst_push_node(auxil, $$, s);
-                                                    $$ = cst_push_node(auxil, $$, e);
-                                                }
+exprs <- e:expr __ s:exprs { $$ = ast_expr_push(s, e); } 
+        / e:expr 
+        { 
+            $$ = ast_create_expr(AST_EXPR_HEAD_INVOKE); 
+            ast_expr_push($$, e);
+        }
 
-list    <- e:expr __ l:list                     {
-                                                    $$ = cst_push_node(auxil, l, e);
-                                                }
-         / e:expr                               { 
-                                                    $$ = cst_make_node(auxil, CST_TAG_CALL, $0s, $0e);
-                                                    $$ = cst_push_node(auxil, $$, e); 
-                                                }
+expr <- a:atom { $$ = a; } / '(' __ s:exprs __ ')' { $$ = ast_expr_reverse(s); }
 
-call    <- '(' __ l:list __ ')'                 { $$ = cst_flip_node(l); }
+atom <- s:sym { $$ = s; }
 
+sym <- [a-zA-Z][a-zA-Z0-9_]* { $$ = ast_create_atom(AST_ATOM_HEAD_SYM, $0, $0e - $0s ); }
 
-nil     <- ( "()" / "nil" )                     { $$ = cst_make_node(auxil, CST_TAG_NIL, $0s, $0e); }
-
-int     <- "0"                                  { $$ = cst_make_node(auxil, CST_TAG_INT, $0s, $0e); }
-
-sym     <- [a-zA-Z_][a-zA-Z0-9_]+               { $$ = cst_make_node(auxil, CST_TAG_SYM, $0s, $0e); }
-
-str     <- '\"' ( "\\\"" [^"] )* '\"'           { $$ = cst_make_node(auxil, CST_TAG_STR, $0s, $0e); }
-
-
-# _   <- [ \t]*
-__  <- [ \t\n]*
+__ <- [ \t\n]*
+# _ <- [ \t]*
 
 %%
 
+#pragma clang diagnostic pop
+
+ast_node_t *pcc_parse_string(const char *str, size_t len)
+{
+    auxil_t *auxil = malloc(sizeof(pcc_auxil_t));
+
+    auxil->str = str;
+    auxil->len = len;
+
+    pcc_context_t *ctx = pcc_create(auxil);
+
+    ast_node_t *res = NULL;
+
+    if(pcc_parse(ctx, &res) != 0)
+    {
+        fprintf(stderr, "error: end of input\n");
+        exit(1);
+    }
+
+    pcc_destroy(ctx);
+
+    return res;
+}
+
+static char pcc_auxil_getchar(auxil_t *auxil)
+{
+    if (auxil->len <= 0)
+        return -1;
+
+    char cc = *auxil->str;
+
+    ++auxil->str;
+    --auxil->len;
+
+    return cc;
+}

@@ -11,11 +11,13 @@ include("qbe/qbe.jl")
 
 src = "some string"
 
-cst = pcc(src)
+cst = pcc(src) # scanning + parsing
 
-ast = ins(cst)
+ast = ins(cst) # instantiation
 
-res = qbe(ast)
+ast = inf(ast) # type inference
+
+res = qbe(ast) # compilation
 
 
 
