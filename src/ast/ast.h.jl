@@ -1,6 +1,7 @@
 module AST
 
 include("../sym/sym.h.jl")
+include("../str/str.h.jl")
 
 import Base: show
 
@@ -28,6 +29,10 @@ end
 
 struct jet_int_t <: jet_atom_t 
     val :: Cint
+end
+
+struct jet_str_t <: jet_atom_t
+    str :: Cnstring
 end
 
 ## expr types
