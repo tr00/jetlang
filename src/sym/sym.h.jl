@@ -1,4 +1,4 @@
-import Base: ncodeunits, length, codeunit, getindex, iterate, string, show
+import Base: ncodeunits, length, codeunit, getindex, iterate, string, show, isvalid
 
 using Libdl
 
@@ -56,12 +56,17 @@ end
     return Char(ccu)
 end
 
+# TODO: add bounds-checking annotations
+function Base.isvalid(sym :: Csymbol, i :: Integer)
+    return 1 <= i <= ncodeunits(sym)
+end
+
 @inline function Base.length(sym :: Csymbol)
     ncodeunits(sym)
 end
 
 Base.@propagate_inbounds function Base.getindex(sym :: Csymbol, i :: Integer)
-    codeunit(sym, i)
+   codeunit(sym, i)
 end
 
 @inline function Base.iterate(sym :: Csymbol, i :: Integer = 1)

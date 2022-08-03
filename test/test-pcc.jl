@@ -1,6 +1,6 @@
 using Test
 
-include("src/ast.jl")
+include("../src/ast/ast.h.jl")
 
 @testset "pcc valid inputs" begin
 
