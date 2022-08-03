@@ -70,6 +70,4 @@ cst_node_t cst_push_node(struct CST *cst, cst_node_t list, cst_node_t item);
 cst_node_t cst_flip_node(struct CST *cst, cst_node_t list);
 
 
-f = * 2
-
 #endif

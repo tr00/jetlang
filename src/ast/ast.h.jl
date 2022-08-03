@@ -41,6 +41,11 @@ struct jet_call_t <: jet_expr_t
     args :: Vector{jet_node_t}
 end
 
+struct jet_bind_t <: jet_bind_t
+    var :: jet_sym_t
+    expr :: jet_node_t
+end
+
 ## constructors
 
 jet_sym_t(str :: String) = jet_sym_t(Csymbol(str))
