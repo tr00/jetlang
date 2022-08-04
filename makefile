@@ -1,6 +1,6 @@
 CC=clang
 CFLAGS=-Wall -Wextra -pedantic
-LDFLAGS=-Wall
+LDFLAGS=-fPIC -shared -Wall
 
 SRCDIR=src
 OBJDIR=obj
@@ -8,6 +8,7 @@ LIBDIR=lib
 
 DIRS=$(wildcard $(SRCDIR)/*/)
 
+DEPS=$(wildcard *.h $(foreach fd, $(DIRS), $(fd)*.h))
 SRCS=$(wildcard *.c $(foreach fd, $(DIRS), $(fd)*.c))
 OBJS=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o, $(SRCS)) # src/xyz/xyz.c => obj/xyz/xyz.o
 
@@ -28,7 +29,7 @@ all: $(OBJ)
 $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@ mkdir -p $(@D)
 	@ $(CC) $(CFLAGS) -c $< -o $@
-	@ echo "compiled $< to $@"
+	@ echo "compiled '$<' to '$@'"
 
 # utils/
 
@@ -37,22 +38,29 @@ alloc:
 
 
 utils: $(OBJ_UTILS)
-	$(CC) $(CFLAGS) -c $(wildcard src/utils/*c) -o
+#	$(CC) $(CFLAGS) -c $(wildcard src/utils/*.c) -o
 
 # pcc/
 
-pcc:
-	packcc -a -o pcc src/pcc/grammar.peg
-	mv pcc.h pcc.c --target-directory=src/pcc
-	$(CC) $(CFLAGS) -fPIC -c src/pcc/pcc.c -o bin/pcc.o
-	$(CC) $(CFLAGS) -fPIC -c src/pcc/ast.c -o bin/ast.o
-	$(CC) -fPIC -shared bin/ast.o bin/pcc.o -o lib/libpcc.so
+$(SRCDIR)/pcc/pcc.c: $(SRCDIR)/pcc/pcc2.peg
+	@ packcc -a -o pcc src/pcc/pcc2.peg
+	@ mv pcc.c pcc.h -t src/pcc
+	@ echo "generated parser from '$<'"
+
+$(LIBDIR)/libpcc.so: $(OBJDIR)/pcc/pcc.o
+	$(CC) -fPIC -shared $< -o $@
+
+PHONY += pcc
+pcc: $(LIBDIR)/libpcc.so
 
 # sym/
 
 sym:
 	$(CC) $(CFLAGS) -fPIC -c src/sym/sym2.c -o bin/sym.o
 	$(CC) -fPIC -shared bin/sym.o -o lib/libsym.so
+
+$(LIBDIR)/libsym.so: $(OBJDIR)/sym/sym.o
+	@ $(CC) $(LDFLAGS) $< -o $@
 
 PHONY += clean
 clean:
