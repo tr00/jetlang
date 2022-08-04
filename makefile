@@ -2,19 +2,44 @@ CC=clang
 CFLAGS=-Wall -Wextra -pedantic
 LDFLAGS=-Wall
 
-uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
+SRCDIR=src
+OBJDIR=obj
+LIBDIR=lib
 
-SRC=$(call uniq, src/pcc.c $(wildcard src/*.c))
-OBJ=$(patsubst src/%.c, bin/%.o, $(SRC))
+DIRS=$(wildcard $(SRCDIR)/*/)
 
-$(info $(shell mkdir -p bin))
-$(info $(shell mkdir -p lib))
+SRCS=$(wildcard *.c $(foreach fd, $(DIRS), $(fd)*.c))
+OBJS=$(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o, $(SRCS)) # src/xyz/xyz.c => obj/xyz/xyz.o
+
+
+# $(info $(shell mkdir -p obj))
+# $(info $(shell mkdir -p lib))
+
+PHONY := echo
+
+echo:
+	@ echo "dirs: $(DIRS)"
+	@ echo "srcs: $(SRCS)"
+	@ echo "objs: $(OBJS)"
 
 all: $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) -o prog
 
-bin/%.o: src/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@ mkdir -p $(@D)
+	@ $(CC) $(CFLAGS) -c $< -o $@
+	@ echo "compiled $< to $@"
+
+# utils/
+
+alloc:
+	$(CC) $(CFLAGS) -c src/utils/alloc.c -o bin/alloc.o
+
+
+utils: $(OBJ_UTILS)
+	$(CC) $(CFLAGS) -c $(wildcard src/utils/*c) -o
+
+# pcc/
 
 pcc:
 	packcc -a -o pcc src/pcc/grammar.peg
@@ -23,10 +48,14 @@ pcc:
 	$(CC) $(CFLAGS) -fPIC -c src/pcc/ast.c -o bin/ast.o
 	$(CC) -fPIC -shared bin/ast.o bin/pcc.o -o lib/libpcc.so
 
+# sym/
+
 sym:
 	$(CC) $(CFLAGS) -fPIC -c src/sym/sym2.c -o bin/sym.o
 	$(CC) -fPIC -shared bin/sym.o -o lib/libsym.so
 
+PHONY += clean
 clean:
-	rm -rf bin/*
-	rm -rf lib/*
+	@ rm -rfv $(OBJDIR)/* $(LIBDIR)/*
+
+.PHONY = $(PHONY)
