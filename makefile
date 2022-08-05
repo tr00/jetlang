@@ -43,7 +43,7 @@ utils: $(OBJ_UTILS)
 # pcc/
 
 $(SRCDIR)/pcc/pcc.c: $(SRCDIR)/pcc/pcc2.peg
-	@ packcc -a -o pcc src/pcc/pcc2.peg
+	@ packcc -a -l -o pcc src/pcc/pcc2.peg
 	@ mv pcc.c pcc.h -t src/pcc
 	@ echo "generated parser from '$<'"
 
